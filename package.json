@@ -1,0 +1,17 @@
+{
+  "name": "bmp-to-jpg",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fs-extra": "^10.0.0",
+    "jimp": "^0.16.1",
+    "zip-local": "^0.3.4"
+  }
+}
