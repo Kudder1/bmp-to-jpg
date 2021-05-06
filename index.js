@@ -37,7 +37,7 @@ function cleanFolders() {
     fsExtra.emptyDirSync(zipDir);
 }
 
-bot.onText(/\/start/, msg => {
+bot.onText(/./, msg => {
     bot.sendMessage(msg.chat.id, 'Hello. Send me BMP screenshots and I will send you a ZIP archive of JPG images');
 });
 
