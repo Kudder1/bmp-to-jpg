@@ -8,7 +8,9 @@ const axios = require('axios');
 
 const TelegramBot = require('node-telegram-bot-api');
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const bot = new TelegramBot(TOKEN, { polling: true });
+const PORT = 5000;
+const HOST = '0.0.0.0';
+const bot = new TelegramBot(TOKEN, { polling: true, webHook: {PORT, HOST} });
 
 const BMP_FOLDER = './bmp';
 const JPG_FOLDER = './jpg';
@@ -55,7 +57,7 @@ bot.on('document', async msg => {
         const destPath = path.join(jpgDir, `${fileName}.jpg`);
         Jimp.read(fileUrl).then(image => {
             image.quality(85).write(destPath);
-            bot.sendMessage(msg.chat.id, `Скриншот ${fileName} успешно конвентирован. Отправляй ещё, или получи уже готовое`, keyboard);
+            bot.sendMessage(msg.chat.id, `Скриншот ${fileName} успешно конвентирован и добавлен в архив. Отправляй ещё, или получи уже готовое`, keyboard);
         })
     } 
     else if (doc.mime_type === 'application/zip') {
