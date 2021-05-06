@@ -24,7 +24,7 @@ const zipDir = path.resolve(ZIP_FOLDER);
 const docFullPath = path.resolve(zipDir, 'jpg.zip');
 
 const keyboard = {
-    "reply_markup": { "keyboard": [["Download"]] }
+    "reply_markup": { "keyboard": [["Получить"]] }
 };
 
 const hiddenKeyboard = {
@@ -37,12 +37,12 @@ function cleanFolders() {
     fsExtra.emptyDirSync(zipDir);
 }
 
-bot.onText(/./, msg => {
-    bot.sendMessage(msg.chat.id, 'Hello. Send me BMP screenshots and I will send you a ZIP archive of JPG images');
+bot.onText(/^(?!.*(Получить))/, msg => { 
+    bot.sendMessage(msg.chat.id, 'Пришли мне BMP скриншоты, и я конвентирую их в JPG! Можешь также прислать скриншоты в ZIP архиве');
 });
 
 bot.on('photo', msg => {
-    bot.sendMessage(msg.chat.id, 'Please send an image as a document');
+    bot.sendMessage(msg.chat.id, 'Пожалуйста загрузи изображение без сжатия');
 });
 
 bot.on('document', async msg => {
@@ -55,7 +55,7 @@ bot.on('document', async msg => {
         const destPath = path.join(jpgDir, `${fileName}.jpg`);
         Jimp.read(fileUrl).then(image => {
             image.quality(85).write(destPath);
-            bot.sendMessage(msg.chat.id, 'Convertation finished, you can either send a new image, or download the current', keyboard);
+            bot.sendMessage(msg.chat.id, `Скриншот ${fileName} успешно конвентирован. Отправляй ещё, или получи уже готовое`, keyboard);
         })
     } 
     else if (doc.mime_type === 'application/zip') {
@@ -85,11 +85,11 @@ bot.on('document', async msg => {
         });
     }
     else if (doc.mime_type.includes('7z') || doc.mime_type.includes('rar')) {
-        bot.sendMessage(msg.chat.id, 'Sorry, only ZIP archives allowed', hiddenKeyboard);
+        bot.sendMessage(msg.chat.id, 'К сожалению я работаю только с ZIP архивами', hiddenKeyboard);
     }
 });
 
-bot.onText(/Download/, async msg => {
+bot.onText(/Получить/, async msg => {
     zipper.sync.zip(jpgDir).save(docFullPath);
     await bot.sendDocument(msg.from.id, docFullPath, hiddenKeyboard);
     cleanFolders();
