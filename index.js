@@ -8,9 +8,9 @@ const axios = require('axios');
 
 const TelegramBot = require('node-telegram-bot-api');
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const PORT = 5000;
-const HOST = '0.0.0.0';
-const bot = new TelegramBot(TOKEN, { polling: true, webHook: {PORT, HOST} });
+const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
+const bot = new TelegramBot(TOKEN, { webHook: {PORT, HOST} });
 
 const BMP_FOLDER = './bmp';
 const JPG_FOLDER = './jpg';
