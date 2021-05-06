@@ -1,10 +1,10 @@
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const Jimp = require('jimp');
 const zipper = require('zip-local');
 const fsExtra = require('fs-extra');
 const axios = require('axios');
-require('dotenv').config();
 
 const TelegramBot = require('node-telegram-bot-api');
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -21,12 +21,7 @@ if (!fs.existsSync(ZIP_FOLDER)) fs.mkdirSync(ZIP_FOLDER);
 const bmpDir = path.resolve(BMP_FOLDER);
 const jpgDir = path.resolve(JPG_FOLDER);
 const zipDir = path.resolve(ZIP_FOLDER);
-
-let isProcessing = false;
-
-function isEmpty(path) {
-    return fs.readdirSync(path).length === 0;
-}
+const docFullPath = path.resolve(zipDir, 'jpg.zip');
 
 const keyboard = {
     "reply_markup": { "keyboard": [["Download"]] }
@@ -35,6 +30,12 @@ const keyboard = {
 const hiddenKeyboard = {
     "reply_markup": {"remove_keyboard": true }
 };
+
+function cleanFolders() {
+    fsExtra.emptyDirSync(bmpDir);
+    fsExtra.emptyDirSync(jpgDir);
+    fsExtra.emptyDirSync(zipDir);
+}
 
 bot.onText(/\/start/, msg => {
     bot.sendMessage(msg.chat.id, 'Hello. Send me BMP screenshots and I will send you a ZIP archive of JPG images');
@@ -52,16 +53,12 @@ bot.on('document', async msg => {
     if (doc.mime_type === 'image/bmp') {
         const fileName = path.parse(doc.file_name).name;
         const destPath = path.join(jpgDir, `${fileName}.jpg`);
-        isProcessing = true;
-        //bot.sendMessage(msg.chat.id, 'Starting convertation');
         Jimp.read(fileUrl).then(image => {
             image.quality(85).write(destPath);
-            isProcessing = false;
-            bot.sendMessage(msg.chat.id, 'Convertation finished, you can either send a new image for convertation, or download the current', keyboard);
+            bot.sendMessage(msg.chat.id, 'Convertation finished, you can either send a new image, or download the current', keyboard);
         })
     } 
     else if (doc.mime_type === 'application/zip') {
-        bot.sendMessage(msg.chat.id, 'Starting convertation', hiddenKeyboard);
         const archive = await axios.get(fileUrl, {
             headers: { Accept: 'application/zip' },
             responseType: 'arraybuffer',
@@ -70,9 +67,7 @@ bot.on('document', async msg => {
         fs.writeFile(archivePath, archive.data, e => {
             if (e) throw e;
             zipper.sync.unzip(archivePath).save(bmpDir);
-            fsExtra.emptyDirSync(zipDir);
-
-            //convert unpacked
+          
             fs.readdir(bmpDir, (err, files) => {
                 if (err) throw err;
                 const jimpProcesses = [];
@@ -82,30 +77,20 @@ bot.on('document', async msg => {
                     jimpProcesses.push(Jimp.read(filePath).then(image => image.quality(90).write(`${destPath}.jpg`)))
                 });
                 Promise.all(jimpProcesses).then(() => setTimeout(async () => {
-                    const docPath = path.resolve(zipDir, 'jpg.zip'); //dublicated
-                    zipper.sync.zip(jpgDir).save(docPath);
-                    await bot.sendDocument(msg.from.id, docPath);
-                    fsExtra.emptyDirSync(bmpDir)
-                    fsExtra.emptyDirSync(jpgDir)
+                    zipper.sync.zip(jpgDir).save(docFullPath);
+                    await bot.sendDocument(msg.from.id, docFullPath);
+                    cleanFolders()
                 }, 500))
             })
         });
     }
+    else if (doc.mime_type.includes('7z') || doc.mime_type.includes('rar')) {
+        bot.sendMessage(msg.chat.id, 'Sorry, only ZIP archives allowed', hiddenKeyboard);
+    }
 });
 
 bot.onText(/Download/, async msg => {
-    const docPath = path.resolve(zipDir, 'jpg.zip'); //dubpicated
-    if (isEmpty(jpgDir) && !isProcessing) {
-        bot.sendMessage(msg.chat.id, 'Nothing to download yet', hiddenKeyboard);
-    }
-    if (isProcessing) {
-        bot.sendMessage(msg.chat.id, 'Please wait, convertation is in progress', hiddenKeyboard);
-    }
-    if (!isEmpty(jpgDir) && !isProcessing) {
-       zipper.sync.zip(jpgDir).save(docPath);
-       await bot.sendDocument(msg.from.id, docPath, hiddenKeyboard);
-       fsExtra.emptyDirSync(bmpDir);
-       fsExtra.emptyDirSync(zipDir);
-       fsExtra.emptyDirSync(jpgDir);
-    }
+    zipper.sync.zip(jpgDir).save(docFullPath);
+    await bot.sendDocument(msg.from.id, docFullPath, hiddenKeyboard);
+    cleanFolders();
 });
